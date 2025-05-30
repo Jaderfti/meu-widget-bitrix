@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="//api.bitrix24.com/api/v1/"></script>
+</head>
+<body>
+    <button onclick="salvarDados()" style="
+        background: #4CAF50;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+    ">
+        💾 Salvar Nome e Telefone
+    </button>
+    
+    <div id="mensagem"></div>
+
+    <script>
+    function salvarDados() {
+        // Pega o Bitrix24
+        BX24.init(function(){
+            // Pega o ID do lead atual
+            BX24.placement.info(function(info){
+                var leadId = info.options.ID;
+                
+                // Busca os dados do lead
+                BX24.callMethod(
+                    'crm.lead.get',
+                    {ID: leadId},
+                    function(result){
+                        if(result.error()) {
+                            alert('Erro: ' + result.error());
+                        } else {
+                            var dados = result.data();
+                            var nome = dados.NAME || 'Sem nome';
+                            var telefone = dados.PHONE ? dados.PHONE[0].VALUE : 'Sem telefone';
+                            
+                            // Mostra os dados salvos
+                            document.getElementById('mensagem').innerHTML = 
+                                '<p style="color: green;">✅ Dados salvos!</p>' +
+                                '<p>Nome: ' + nome + '</p>' +
+                                '<p>Telefone: ' + telefone + '</p>';
+                            
+                            // Aqui você pode enviar para onde quiser
+                            // Por exemplo, para um webhook do N8N
+                            salvarEmAlgumLugar(nome, telefone);
+                        }
+                    }
+                );
+            });
+        });
+    }
+    
+    function salvarEmAlgumLugar(nome, telefone) {
+        // Exemplo: enviar para N8N
+        fetch('https://seu-n8n.com/webhook/salvar-lead', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                nome: nome,
+                telefone: telefone,
+                data: new Date()
+            })
+        });
+    }
+    </script>
+</body>
+</html>

@@ -2,70 +2,109 @@
 <html>
 <head>
     <script src="//api.bitrix24.com/api/v1/"></script>
+    <style>
+        /* Deixando o botão bonito */
+        .meu-botao {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .meu-botao:hover {
+            background-color: #45a049;
+        }
+        
+        .mensagem {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+    </style>
 </head>
 <body>
-    <button onclick="salvarDados()" style="
-        background: #4CAF50;
-        color: white;
-        padding: 10px 20px;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        font-size: 16px;
-    ">
+    <!-- Nosso botão mágico -->
+    <button class="meu-botao" onclick="salvarDados()">
         💾 Salvar Nome e Telefone
     </button>
     
-    <div id="mensagem"></div>
+    <!-- Aqui aparece a mensagem quando salvamos -->
+    <div id="mensagem" class="mensagem"></div>
 
     <script>
-    function salvarDados() {
-        // Pega o Bitrix24
+        // Quando a página carregar
         BX24.init(function(){
+            console.log('Widget carregado!');
+        });
+
+        // Função que salva os dados
+        function salvarDados() {
             // Pega o ID do lead atual
-            BX24.placement.info(function(info){
-                var leadId = info.options.ID;
+            BX24.placement.info().options.ID.then(function(leadId) {
                 
                 // Busca os dados do lead
                 BX24.callMethod(
                     'crm.lead.get',
-                    {ID: leadId},
-                    function(result){
-                        if(result.error()) {
-                            alert('Erro: ' + result.error());
-                        } else {
-                            var dados = result.data();
-                            var nome = dados.NAME || 'Sem nome';
-                            var telefone = dados.PHONE ? dados.PHONE[0].VALUE : 'Sem telefone';
+                    { id: leadId },
+                    function(result) {
+                        if(result.data()) {
+                            var lead = result.data();
                             
-                            // Mostra os dados salvos
-                            document.getElementById('mensagem').innerHTML = 
-                                '<p style="color: green;">✅ Dados salvos!</p>' +
-                                '<p>Nome: ' + nome + '</p>' +
-                                '<p>Telefone: ' + telefone + '</p>';
+                            // Pega o nome e telefone
+                            var nome = lead.NAME || 'Sem nome';
+                            var telefone = '';
                             
-                            // Aqui você pode enviar para onde quiser
-                            // Por exemplo, para um webhook do N8N
-                            salvarEmAlgumLugar(nome, telefone);
+                            // Procura o telefone nos campos
+                            if(lead.PHONE && lead.PHONE.length > 0) {
+                                telefone = lead.PHONE[0].VALUE;
+                            }
+                            
+                            // Aqui você pode salvar onde quiser!
+                            // Por exemplo, em um campo personalizado:
+                            salvarEmCampoPersonalizado(leadId, nome, telefone);
+                            
+                            // Mostra mensagem de sucesso
+                            mostrarMensagem('✅ Dados salvos: ' + nome + ' - ' + telefone, 'success');
                         }
                     }
                 );
             });
-        });
-    }
-    
-    function salvarEmAlgumLugar(nome, telefone) {
-        // Exemplo: enviar para N8N
-        fetch('https://seu-n8n.com/webhook/salvar-lead', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                nome: nome,
-                telefone: telefone,
-                data: new Date()
-            })
-        });
-    }
+        }
+        
+        // Função para salvar em campo personalizado
+        function salvarEmCampoPersonalizado(leadId, nome, telefone) {
+            // Salva em um campo de comentário, por exemplo
+            var dadosSalvos = 'Nome: ' + nome + '\nTelefone: ' + telefone;
+            
+            BX24.callMethod(
+                'crm.lead.update',
+                { 
+                    id: leadId,
+                    fields: {
+                        'COMMENTS': dadosSalvos  // Salva nos comentários
+                    }
+                },
+                function(result) {
+                    console.log('Dados salvos com sucesso!');
+                }
+            );
+        }
+        
+        // Função para mostrar mensagens
+        function mostrarMensagem(texto, tipo) {
+            var div = document.getElementById('mensagem');
+            div.innerHTML = texto;
+            div.style.backgroundColor = tipo === 'success' ? '#d4edda' : '#f8d7da';
+            div.style.color = tipo === 'success' ? '#155724' : '#721c24';
+            
+            // Esconde a mensagem depois de 3 segundos
+            setTimeout(function() {
+                div.innerHTML = '';
+            }, 3000);
+        }
     </script>
 </body>
 </html>
